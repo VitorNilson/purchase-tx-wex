@@ -1,0 +1,13 @@
+spring:
+  h2:
+    console:
+      enabled: true
+  r2dbc:
+    url: r2dbc:h2:mem:///wex_purchase_transactions?options=DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
