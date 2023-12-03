@@ -1,0 +1,303 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Wex Purchase Transaction EKS Cluster"
+
+Parameters: 
+  ProjectName:
+    Type: String
+    Default: wex-purchase-transaction
+  VpcName:
+    Type: String
+    Default: eks-wex-purchase-tx-vpc
+  CronJobsNodeGroupName:
+    Type: String
+    Default: cronjobs-node-group
+  ApplicationNodeGroupName:
+    Type: String
+    Default: application-node-group
+  DBUsername:
+    Type: String
+    ConstraintDescription: I wouldn't set this master username here.
+    Default: postgres
+  DBPassword:
+    Type: String
+    ConstraintDescription: I wouldn't set this master password here.
+    Default: postgres
+
+Resources:
+  EksVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Ref VpcName
+        - Key: Project
+          Value: !Ref ProjectName
+
+  # For our public Subnet.
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: eks-InternetGateway
+        - Key: Project
+          Value: !Ref ProjectName
+
+  EksVpcInternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref EksVPC
+
+  EksPublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref EksVPC
+      Tags:
+        - Key: Name
+          Value: eks-public-route-table
+        - Key: Project
+          Value: !Ref ProjectName
+
+  EksPublicRoute:
+    DependsOn: EksVpcInternetGatewayAttachment
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref EksPublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  EksPublicSubnet01:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: us-east-1a
+      MapPublicIpOnLaunch: true
+      CidrBlock: 10.0.1.0/24
+      VpcId: !Ref EksVPC
+      Tags:
+        - Key: Name
+          Value: eks-public-subnet-01
+        - Key: Project
+          Value: !Ref ProjectName
+
+  EksPublicSubnet02:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: us-east-1b
+      MapPublicIpOnLaunch: true
+      CidrBlock: 10.0.2.0/24
+      VpcId: !Ref EksVPC
+      Tags:
+        - Key: Name
+          Value: eks-public-subnet-02
+        - Key: Project
+          Value: !Ref ProjectName
+          
+  EksPrivateSubnet01:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: us-east-1a
+      MapPublicIpOnLaunch: true
+      CidrBlock: 10.0.3.0/24
+      VpcId: !Ref EksVPC
+      Tags:
+        - Key: Name
+          Value: eks-private-subnet-01
+        - Key: Project
+          Value: !Ref ProjectName
+
+  EksPrivateSubnet02:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: us-east-1b
+      MapPublicIpOnLaunch: true
+      CidrBlock: 10.0.4.0/24
+      VpcId: !Ref EksVPC
+      Tags:
+        - Key: Name
+          Value: eks-private-subnet-02
+        - Key: Project
+          Value: !Ref ProjectName
+
+  EksPrivateSubnet03:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: us-east-1a
+      MapPublicIpOnLaunch: true
+      CidrBlock: 10.0.5.0/24
+      VpcId: !Ref EksVPC
+      Tags:
+        - Key: Name
+          Value: eks-private-subnet-03
+        - Key: Project
+          Value: !Ref ProjectName
+
+  EksPrivateSubnet04:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: us-east-1b
+      MapPublicIpOnLaunch: true
+      CidrBlock: 10.0.6.0/24
+      VpcId: !Ref EksVPC
+      Tags:
+        - Key: Name
+          Value: eks-private-subnet-04
+        - Key: Project
+          Value: !Ref ProjectName
+
+  RDSSubnetGroup:
+    Type: "AWS::RDS::DBSubnetGroup"
+    Properties:
+      DBSubnetGroupName: "subnetgroup"
+      DBSubnetGroupDescription: "Subnet Group"
+      SubnetIds:
+        - !Ref "EksPrivateSubnet03"
+        - !Ref "EksPrivateSubnet04"
+
+  RDSInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      AllocatedStorage: "5"
+      DBSubnetGroupName: !Ref RDSSubnetGroup
+      DBInstanceClass: db.t3.micro
+      Engine: postgres
+      MultiAZ: true
+      BackupRetentionPeriod: 20
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+
+  EksPublicSubnet01RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref EksPublicSubnet01
+      RouteTableId: !Ref EksPublicRouteTable
+
+  EksPublicSubnet02RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref EksPublicSubnet02
+      RouteTableId: !Ref EksPublicRouteTable
+
+  EksSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Cluster communication with worker nodes
+      VpcId: !Ref EksVPC
+      Tags:
+        - Key: Name
+          Value: eks-SecurityGroup
+        - Key: Project
+          Value: !Ref ProjectName
+
+  EksIAMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - eks.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      RoleName: EKSClusterRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
+
+  EksCluster:
+    Type: AWS::EKS::Cluster
+    Properties:
+      Name: EKS
+      Version: 1.28
+      RoleArn: !GetAtt EksIAMRole.Arn
+      ResourcesVpcConfig:
+        SecurityGroupIds:
+          - !Ref EksSecurityGroup
+        SubnetIds:
+          - !Ref EksPublicSubnet01
+          - !Ref EksPublicSubnet02
+    DependsOn:
+      - EksIAMRole
+      - EksPublicSubnet01
+      - EksPublicSubnet02
+      - EksPrivateSubnet01
+      - EksPrivateSubnet02
+      - EksSecurityGroup
+
+  EksNodeInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - !FindInMap [ServicePrincipals, !Ref "AWS::Partition", ec2]
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonEKS_CNI_Policy"
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+      Path: /
+
+  # CronJobs are supposed to Run here.
+  EksSpotInstanceNodeGroup:
+    Type: AWS::EKS::Nodegroup
+    Properties:
+      CapacityType: SPOT
+      ClusterName: EKS
+      NodeRole: !GetAtt EksNodeInstanceRole.Arn
+      AmiType: AL2_x86_64
+      InstanceTypes:
+        - t3.medium
+      NodegroupName: !Ref CronJobsNodeGroupName
+      RemoteAccess:
+        Ec2SshKey: my-eks-key
+      ScalingConfig:
+        # As we would have two cron Jobs, 1 instance (for now) looks enough. Of course, we need data to guarantee this.
+        MinSize: 1
+        DesiredSize: 1
+        MaxSize: 1
+      Labels:
+        Project: !Ref CronJobsNodeGroupName
+      Subnets:
+        - !Ref EksPublicSubnet01
+        - !Ref EksPublicSubnet02
+    DependsOn:
+      - EksCluster
+      - EksNodeInstanceRole
+
+  # The application is supposed to run here.
+  EksOnDemandNodeGroup:
+    Type: AWS::EKS::Nodegroup
+    Properties:
+      CapacityType: ON_DEMAND
+      ClusterName: EKS
+      NodeRole: !GetAtt EksNodeInstanceRole.Arn
+      AmiType: AL2_x86_64
+      InstanceTypes:
+        - t3.medium
+      NodegroupName: !Ref ApplicationNodeGroupName
+      RemoteAccess:
+        Ec2SshKey: my-eks-key
+      ScalingConfig:
+        # This config is definitely not for production. Whe need data to define the exact scalability solution.
+        MinSize: 1
+        DesiredSize: 1
+        MaxSize: 2
+      Labels:
+        Project: !Ref ApplicationNodeGroupName
+      Subnets:
+        - !Ref EksPrivateSubnet01
+        - !Ref EksPrivateSubnet02
+    DependsOn:
+      - EksCluster
+      - EksNodeInstanceRole
