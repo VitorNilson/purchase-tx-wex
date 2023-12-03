@@ -158,7 +158,8 @@ To do that, I would need (again) a more robust instance type.
   * Configure the application to use RDS as the database based on environments.
   * Configure the Cluster Autoscaler.
   * GitHub Actions.
+  * Authentication
 
-I'm aware that, yes, I can configure all that with a brash script, but I decided only to show you some knowledge about AWS and application scalability. 
+I'm aware that, yes, I can configure the entire stack with a brash script, but I decided only to show you some knowledge about AWS and application scalability. 
    
 I also understand that we can use an existing cluster, but I'm considering that not and this is why there's a cloudformation stack for this purpose.
