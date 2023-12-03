@@ -157,6 +157,7 @@ To do that, I would need (again) a more robust instance type.
   * Deploy ArgoCD and configure it with the Helm Chart repository.
   * Configure the application to use RDS as the database based on environments.
   * Configure the Cluster Autoscaler.
+  * GitHub Actions.
 
 I'm aware that, yes, I can configure all that with a brash script, but I decided only to show you some knowledge about AWS and application scalability. 
    
