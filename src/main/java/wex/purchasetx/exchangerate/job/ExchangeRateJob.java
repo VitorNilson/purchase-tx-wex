@@ -1,5 +1,6 @@
 package wex.purchasetx.exchangerate.job;
 
+import lombok.Generated;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
@@ -33,6 +34,7 @@ public class ExchangeRateJob implements CommandLineRunner {
     }
 
     @Override
+    @Generated
     public void run(String... args) throws Exception {
         run();
     }
